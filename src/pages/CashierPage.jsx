@@ -45,26 +45,27 @@ export default function CashierPage() {
   const statusLabel = { ready: '🟢 جاهز', completed: '✅ مكتمل' }
 
   return (
-    <div className="p-4 flex gap-4 h-[calc(100vh-64px)]">
+    <div className="p-4 flex gap-4 h-[calc(100vh-64px)] pattern-bg">
       {/* Orders list */}
-      <div className="w-72 flex-shrink-0 glass rounded-xl p-4 overflow-y-auto">
-        <h2 className="text-white font-bold text-lg mb-4">الطلبات الجاهزة 🧾</h2>
+      <div className="w-72 flex-shrink-0 glass rounded-xl p-4 overflow-y-auto animate-fade-in-up">
+        <h2 className="text-white font-bold text-lg mb-4 font-display">الطلبات الجاهزة 🧾</h2>
         {orders.filter(o => o.status === 'ready').length === 0 && (
           <p className="text-gray-500 text-sm text-center py-4">لا توجد طلبات جاهزة</p>
         )}
         <div className="space-y-2">
-          {orders.filter(o => o.status === 'ready').map(o => (
+          {orders.filter(o => o.status === 'ready').map((o, i) => (
             <button
               key={o.id}
               onClick={() => selectOrder(o)}
-              className={`w-full text-right p-3 rounded-lg transition-all border ${
+              className={`w-full text-right p-3 rounded-lg transition-all duration-200 border stagger-item ${
                 selected?.id === o.id
-                  ? 'border-brand bg-brand/10'
-                  : 'border-border bg-white/5 hover:border-brand/50'
+                  ? 'border-brand bg-brand/10 shadow-[0_0_0_1px_rgba(255,107,53,0.3)]'
+                  : 'border-border bg-white/5 hover:border-brand/50 hover:bg-white/[0.07]'
               }`}
+              style={{ animationDelay: `${i * 50}ms` }}
             >
               <div className="flex justify-between items-center">
-                <span className="text-white font-bold">#{o.order_number}</span>
+                <span className="text-white font-bold font-display">#{o.order_number}</span>
                 <span className="text-green-400 text-xs">{statusLabel[o.status]}</span>
               </div>
               <div className="text-gray-400 text-sm mt-1">{o.tables?.label}</div>
@@ -92,22 +93,22 @@ export default function CashierPage() {
       </div>
 
       {/* Receipt view */}
-      <div className="flex-1 glass rounded-xl p-6">
+      <div className="flex-1 glass rounded-xl p-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
         {!selected ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <span className="text-6xl mb-4">🧾</span>
             <p>اختر طلباً لعرض الفاتورة</p>
           </div>
         ) : (
-          <div className="max-w-sm mx-auto">
+          <div className="max-w-sm mx-auto animate-scale-in">
             <div className="text-center mb-6">
-              <div className="text-2xl font-bold text-white mb-1">فاتورة</div>
+              <div className="text-2xl font-bold text-white mb-1 font-display">فاتورة</div>
               <div className="text-gray-400">#{selected.order_number} · {selected.tables?.label}</div>
             </div>
 
             <div className="space-y-3 mb-6">
-              {items.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+              {items.map((item, i) => (
+                <div key={item.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
                   <div>
                     <div className="text-white">{item.product_name_ar}</div>
                     {item.notes && <div className="text-yellow-400 text-xs">{item.notes}</div>}
@@ -122,15 +123,15 @@ export default function CashierPage() {
 
             <div className="border-t border-border pt-4 mb-6">
               <div className="flex justify-between text-xl font-bold">
-                <span className="text-white">الإجمالي</span>
-                <span className="text-brand">{Number(selected.total_amount).toFixed(2)} ج.م</span>
+                <span className="text-white font-display">الإجمالي</span>
+                <span className="text-brand font-display">{Number(selected.total_amount).toFixed(2)} ج.م</span>
               </div>
             </div>
 
             {selected.status === 'ready' && (
               <button
                 onClick={completeOrder}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg transition-all"
+                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_20px_rgba(34,197,94,0.35)]"
               >
                 ✅ تم الدفع - إغلاق الطلب
               </button>

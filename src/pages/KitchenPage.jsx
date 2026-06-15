@@ -42,35 +42,39 @@ export default function KitchenPage() {
   }
 
   return (
-    <div className="p-4 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">شاشة المطبخ 👨‍🍳</h1>
-        <div className="flex items-center gap-2">
+    <div className="p-4 min-h-screen pattern-bg">
+      <div className="flex items-center justify-between mb-6 animate-fade-in-up">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-white">شاشة المطبخ 👨‍🍳</h1>
+          <p className="text-gray-500 text-sm mt-1">{orders.length} طلب قيد التنفيذ</p>
+        </div>
+        <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20">
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
           <span className="text-green-400 text-sm">متصل - تحديث فوري</span>
         </div>
       </div>
 
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500 animate-fade-in-up">
           <span className="text-6xl mb-4">✨</span>
           <p className="text-xl">لا توجد طلبات حالياً</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {orders.map(order => {
+          {orders.map((order, i) => {
             const cfg = statusConfig[order.status]
             const isNew = newOrderIds.has(order.id)
             return (
               <div
                 key={order.id}
-                className={`glass rounded-xl border-2 ${cfg.color} ${isNew ? 'pulse-new' : ''} flex flex-col`}
+                className={`glass rounded-xl border-2 ${cfg.color} ${isNew ? 'pulse-new' : ''} flex flex-col stagger-item`}
+                style={{ animationDelay: `${i * 60}ms` }}
               >
                 {/* Header */}
                 <div className={`p-3 border-b border-white/10 flex justify-between items-center`}>
                   <div>
-                    <span className="text-white font-bold text-lg">#{order.order_number}</span>
-                    {isNew && <span className="mr-2 text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold">جديد!</span>}
+                    <span className="text-white font-bold text-lg font-display">#{order.order_number}</span>
+                    {isNew && <span className="mr-2 text-xs bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold animate-pulse">جديد!</span>}
                   </div>
                   <span className="text-gray-400 text-sm">{order.tables?.label}</span>
                 </div>
@@ -100,14 +104,14 @@ export default function KitchenPage() {
                   </div>
                   <button
                     onClick={() => updateStatus(order.id, cfg.next)}
-                    className="w-full bg-brand hover:bg-brand/80 text-white font-bold py-2 rounded-lg transition-all text-sm"
+                    className="w-full bg-brand hover:bg-brand-light text-white font-bold py-2 rounded-lg transition-all duration-200 text-sm hover:shadow-[0_0_16px_rgba(255,107,53,0.4)] active:scale-[0.98]"
                   >
                     {cfg.nextLabel}
                   </button>
                   {order.status === 'preparing' && (
                     <button
                       onClick={() => updateStatus(order.id, 'cancelled')}
-                      className="w-full mt-1 text-red-400 hover:bg-red-400/10 py-1 rounded-lg transition-all text-xs"
+                      className="w-full mt-1 text-red-400 hover:bg-red-400/10 py-1 rounded-lg transition-all duration-200 text-xs"
                     >
                       إلغاء
                     </button>
