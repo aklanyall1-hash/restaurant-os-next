@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { supabase, RESTAURANT_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import QRCode from 'qrcode.react'
 import Counter from '../components/Counter'
 
 export default function MenuPage() {
+  const { restaurantId } = useAuth()
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [tables, setTables] = useState([])
@@ -14,20 +16,29 @@ export default function MenuPage() {
 
   const fetchData = async () => {
     const [cats, prods, tbls] = await Promise.all([
-      supabase.from('categories').select('*').eq('restaurant_id', RESTAURANT_ID).order('sort_order'),
-      supabase.from('products').select('*, categories(name_ar)').eq('restaurant_id', RESTAURANT_ID).order('sort_order'),
-      supabase.from('tables').select('*').eq('restaurant_id', RESTAURANT_ID).order('table_number'),
+      supabase.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
+      supabase.from('products').select('*, categories(name_ar)').eq('restaurant_id', restaurantId).order('sort_order'),
+      supabase.from('tables').select('*').eq('restaurant_id', restaurantId).order('table_number'),
     ])
     if (cats.data) setCategories(cats.data)
     if (prods.data) setProducts(prods.data)
     if (tbls.data) setTables(tbls.data)
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    if (!restaurantId) return
+    fetchData()
+
+    const channel = supabase.channel('menu-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `restaurant_id=eq.${restaurantId}` }, fetchData)
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [restaurantId])
 
   const saveProduct = async () => {
     if (!form.name_ar || !form.price) return
-    const payload = { ...form, price: Number(form.price), restaurant_id: RESTAURANT_ID }
+    const payload = { ...form, price: Number(form.price), restaurant_id: restaurantId }
     if (editId) {
       await supabase.from('products').update(payload).eq('id', editId)
       setEditId(null)

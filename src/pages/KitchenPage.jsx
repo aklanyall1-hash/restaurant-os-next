@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase, RESTAURANT_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 
 export default function KitchenPage() {
+  const { restaurantId } = useAuth()
   const [orders, setOrders] = useState([])
   const [newOrderIds, setNewOrderIds] = useState(new Set())
 
@@ -9,28 +11,29 @@ export default function KitchenPage() {
     const { data } = await supabase
       .from('orders')
       .select('*, tables(label), order_items(*, products(name_ar, image_url))')
-      .eq('restaurant_id', RESTAURANT_ID)
+      .eq('restaurant_id', restaurantId)
       .in('status', ['pending', 'preparing'])
       .order('created_at', { ascending: true })
     if (data) setOrders(data)
   }
 
   useEffect(() => {
+    if (!restaurantId) return
     fetchOrders()
 
     const channel = supabase.channel('kitchen')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, (payload) => {
         setNewOrderIds(prev => new Set([...prev, payload.new.id]))
         setTimeout(() => {
           setNewOrderIds(prev => { const s = new Set(prev); s.delete(payload.new.id); return s })
         }, 5000)
         fetchOrders()
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, fetchOrders)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [])
+  }, [restaurantId])
 
   const updateStatus = async (orderId, status) => {
     await supabase.from('orders').update({ status }).eq('id', orderId)

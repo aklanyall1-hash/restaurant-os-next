@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/AuthContext'
 
 const links = [
   { to: '/', label: 'الرئيسية', icon: '📊' },
@@ -9,6 +10,13 @@ const links = [
 
 export default function NavBar() {
   const { pathname } = useLocation()
+  const { profile, signOut, isSuperAdmin } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   return (
     <nav className="fixed top-0 right-0 left-0 z-50 glass border-b border-border h-16 flex items-center px-4">
@@ -17,8 +25,12 @@ export default function NavBar() {
           🌟
         </span>
         <div className="leading-tight">
-          <div className="font-display font-bold text-lg text-white">أبو حسني</div>
-          <div className="text-[10px] text-gold tracking-wide">Restaurant OS</div>
+          <div className="font-display font-bold text-lg text-white">
+            {profile?.restaurants?.name || 'أبو حسني'}
+          </div>
+          <div className="text-[10px] text-gold tracking-wide">
+            {isSuperAdmin ? 'Super Admin' : 'Restaurant OS'}
+          </div>
         </div>
       </div>
       <div className="flex gap-1 mr-auto">
@@ -37,6 +49,12 @@ export default function NavBar() {
           </Link>
         ))}
       </div>
+      <button
+        onClick={handleSignOut}
+        className="mr-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200"
+      >
+        خروج
+      </button>
     </nav>
   )
 }

@@ -29,6 +29,15 @@ export default function TablePage() {
       if (tbl.data) setTableId(tbl.data.id)
     }
     load()
+
+    const channel = supabase.channel('table-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `restaurant_id=eq.${RESTAURANT_ID}` }, async () => {
+        const { data } = await supabase.from('products').select('*').eq('restaurant_id', RESTAURANT_ID).eq('is_available', true).order('sort_order')
+        if (data) setProducts(data)
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
   }, [tableNumber])
 
   const addToCart = (product) => {

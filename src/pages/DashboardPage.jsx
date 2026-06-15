@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { supabase, RESTAURANT_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import Counter from '../components/Counter'
 
 export default function DashboardPage() {
+  const { restaurantId } = useAuth()
   const [stats, setStats] = useState({ pending: 0, preparing: 0, ready: 0, todayTotal: 0, todayOrders: 0 })
   const [recentOrders, setRecentOrders] = useState([])
 
@@ -11,7 +13,7 @@ export default function DashboardPage() {
     const { data } = await supabase
       .from('orders')
       .select('status, total_amount, created_at')
-      .eq('restaurant_id', RESTAURANT_ID)
+      .eq('restaurant_id', restaurantId)
       .gte('created_at', today)
 
     if (data) {
@@ -29,25 +31,26 @@ export default function DashboardPage() {
     const { data } = await supabase
       .from('orders')
       .select('*, tables(label)')
-      .eq('restaurant_id', RESTAURANT_ID)
+      .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(8)
     if (data) setRecentOrders(data)
   }
 
   useEffect(() => {
+    if (!restaurantId) return
     fetchStats()
     fetchRecent()
 
     const channel = supabase.channel('dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, () => {
         fetchStats()
         fetchRecent()
       })
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [])
+  }, [restaurantId])
 
   const statusLabel = { pending: 'انتظار', preparing: 'يُحضَّر', ready: 'جاهز', completed: 'مكتمل', cancelled: 'ملغي' }
 

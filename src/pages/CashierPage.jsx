@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase, RESTAURANT_ID } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 
 export default function CashierPage() {
+  const { restaurantId } = useAuth()
   const [orders, setOrders] = useState([])
   const [selected, setSelected] = useState(null)
   const [items, setItems] = useState([])
@@ -10,7 +12,7 @@ export default function CashierPage() {
     const { data } = await supabase
       .from('orders')
       .select('*, tables(label)')
-      .eq('restaurant_id', RESTAURANT_ID)
+      .eq('restaurant_id', restaurantId)
       .in('status', ['ready', 'completed'])
       .order('created_at', { ascending: false })
       .limit(30)
@@ -35,12 +37,13 @@ export default function CashierPage() {
   }
 
   useEffect(() => {
+    if (!restaurantId) return
     fetchOrders()
     const ch = supabase.channel('cashier')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
       .subscribe()
     return () => supabase.removeChannel(ch)
-  }, [])
+  }, [restaurantId])
 
   const statusLabel = { ready: '🟢 جاهز', completed: '✅ مكتمل' }
 
