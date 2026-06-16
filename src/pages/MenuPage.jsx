@@ -157,12 +157,22 @@ export default function MenuPage() {
                 <div className="bg-white p-2 rounded-lg inline-block mb-2 cursor-pointer transition-transform duration-200 hover:scale-105" onClick={() => setShowQR(t)}>
                   <QRCode value={tableUrl(t.table_number)} size={80} />
                 </div>
-                <button
-                  onClick={() => setShowQR(t)}
-                  className="block w-full text-xs text-brand hover:text-white transition-all"
-                >
-                  عرض QR
-                </button>
+                <div className="flex gap-1 mt-1">
+                  <button
+                    onClick={() => setShowQR(t)}
+                    className="flex-1 text-xs text-brand hover:text-white transition-all py-1 rounded hover:bg-white/10"
+                  >
+                    📱 QR
+                  </button>
+                  <a
+                    href={tableUrl(t.table_number)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-xs text-green-400 hover:text-white transition-all py-1 rounded hover:bg-white/10"
+                  >
+                    🔗 افتح
+                  </a>
+                </div>
               </div>
             ))}
           </div>
@@ -177,8 +187,20 @@ export default function MenuPage() {
             <div className="bg-white p-4 rounded-xl inline-block mb-4">
               <QRCode value={tableUrl(showQR.table_number)} size={200} />
             </div>
-            <div className="text-gray-400 text-sm mb-4 break-all">{tableUrl(showQR.table_number)}</div>
-            <button onClick={() => setShowQR(null)} className="bg-brand hover:bg-brand-light text-white px-6 py-2 rounded-lg transition-colors">إغلاق</button>
+            <div className="text-gray-500 text-xs mb-4 break-all">{tableUrl(showQR.table_number)}</div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowQR(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-gray-300 px-4 py-2.5 rounded-lg transition-colors text-sm">
+                إغلاق
+              </button>
+              <a
+                href={tableUrl(showQR.table_number)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-brand hover:bg-brand-light text-white px-4 py-2.5 rounded-lg transition-colors text-sm font-bold text-center"
+              >
+                🔗 افتح صفحة الطاولة
+              </a>
+            </div>
           </div>
         </div>
       )}
