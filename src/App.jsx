@@ -7,6 +7,8 @@ import CashierPage from './pages/CashierPage'
 import DashboardPage from './pages/DashboardPage'
 import TablePage from './pages/TablePage'
 import LoginPage from './pages/LoginPage'
+import SettingsPage from './pages/SettingsPage'
+import AdminPage from './pages/AdminPage'
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
                 <Route path="/kitchen" element={<KitchenPage />} />
                 <Route path="/cashier" element={<CashierPage />} />
                 <Route path="/menu" element={<MenuPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/admin" element={<AdminPage />} />
               </Routes>
             </main>
           </ProtectedRoute>

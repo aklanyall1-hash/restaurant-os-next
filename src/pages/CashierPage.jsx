@@ -3,10 +3,48 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 
 export default function CashierPage() {
-  const { restaurantId } = useAuth()
+  const { restaurantId, profile } = useAuth()
   const [orders, setOrders] = useState([])
   const [selected, setSelected] = useState(null)
   const [items, setItems] = useState([])
+
+  const printReceipt = () => {
+    if (!selected) return
+    const restaurantName = profile?.restaurants?.name || 'المطعم'
+    const itemsHtml = items.map(item => `
+      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #ccc;font-size:13px;">
+        <span>${item.product_name_ar} x${item.quantity}</span>
+        <span>${Number(item.total_price).toFixed(2)}</span>
+      </div>
+    `).join('')
+
+    const win = window.open('', '_blank', 'width=320,height=600')
+    win.document.write(`
+      <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="utf-8" />
+          <title>فاتورة #${selected.order_number}</title>
+          <style>
+            body { font-family: 'Cairo', Arial, sans-serif; width: 280px; margin: 0 auto; padding: 16px; }
+            h2 { text-align: center; margin: 4px 0; }
+            .center { text-align: center; }
+            .total { display:flex; justify-content:space-between; font-weight:bold; font-size:16px; margin-top:10px; padding-top:8px; border-top:2px solid #000; }
+            .meta { text-align:center; font-size:12px; color:#555; margin-bottom:10px; }
+          </style>
+        </head>
+        <body>
+          <h2>${restaurantName}</h2>
+          <div class="meta">طاولة: ${selected.tables?.label || '-'} · #${selected.order_number}</div>
+          <div class="meta">${new Date(selected.created_at).toLocaleString('ar-EG')}</div>
+          ${itemsHtml}
+          <div class="total"><span>الإجمالي</span><span>${Number(selected.total_amount).toFixed(2)} ج.م</span></div>
+          <p class="center" style="margin-top:20px;font-size:12px;">شكراً لزيارتكم 🌟</p>
+          <script>window.onload = () => { window.print(); }</script>
+        </body>
+      </html>
+    `)
+    win.document.close()
+  }
 
   const fetchOrders = async () => {
     const { data } = await supabase
@@ -132,15 +170,31 @@ export default function CashierPage() {
             </div>
 
             {selected.status === 'ready' && (
-              <button
-                onClick={completeOrder}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_20px_rgba(34,197,94,0.35)]"
-              >
-                ✅ تم الدفع - إغلاق الطلب
-              </button>
+              <>
+                <button
+                  onClick={printReceipt}
+                  className="w-full bg-white/10 hover:bg-white/15 text-white font-bold py-3 rounded-xl mb-3 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  🖨️ طباعة الفاتورة
+                </button>
+                <button
+                  onClick={completeOrder}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_20px_rgba(34,197,94,0.35)]"
+                >
+                  ✅ تم الدفع - إغلاق الطلب
+                </button>
+              </>
             )}
             {selected.status === 'completed' && (
-              <div className="text-center text-green-400 font-bold py-4">✅ تم إغلاق هذا الطلب</div>
+              <div className="space-y-3">
+                <button
+                  onClick={printReceipt}
+                  className="w-full bg-white/10 hover:bg-white/15 text-white font-bold py-3 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  🖨️ إعادة طباعة الفاتورة
+                </button>
+                <div className="text-center text-green-400 font-bold py-2">✅ تم إغلاق هذا الطلب</div>
+              </div>
             )}
           </div>
         )}

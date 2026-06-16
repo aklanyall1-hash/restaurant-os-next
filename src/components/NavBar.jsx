@@ -1,17 +1,22 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 
-const links = [
+const baseLinks = [
   { to: '/', label: 'الرئيسية', icon: '📊' },
   { to: '/kitchen', label: 'المطبخ', icon: '👨‍🍳' },
   { to: '/cashier', label: 'الكاشير', icon: '🧾' },
   { to: '/menu', label: 'المنيو', icon: '🍽️' },
+  { to: '/settings', label: 'الإعدادات', icon: '⚙️' },
 ]
 
 export default function NavBar() {
   const { pathname } = useLocation()
   const { profile, signOut, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
+
+  const links = isSuperAdmin
+    ? [...baseLinks, { to: '/admin', label: 'المشرف', icon: '🛡️' }]
+    : baseLinks
 
   const handleSignOut = async () => {
     await signOut()

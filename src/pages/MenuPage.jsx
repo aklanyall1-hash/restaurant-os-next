@@ -11,8 +11,33 @@ export default function MenuPage() {
   const [tables, setTables] = useState([])
   const [activeTab, setActiveTab] = useState('products')
   const [showQR, setShowQR] = useState(null)
-  const [form, setForm] = useState({ name_ar: '', price: '', category_id: '', is_available: true })
+  const [form, setForm] = useState({ name_ar: '', price: '', category_id: '', is_available: true, image_url: '' })
   const [editId, setEditId] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const uploadImage = async () => {
+    if (!imageFile) return null
+    setUploading(true)
+    const ext = imageFile.name.split('.').pop()
+    const fileName = `${restaurantId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('product-images').upload(fileName, imageFile)
+    setUploading(false)
+    if (error) {
+      alert('فشل رفع الصورة: ' + error.message)
+      return null
+    }
+    const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+    return data.publicUrl
+  }
 
   const fetchData = async () => {
     const [cats, prods, tbls] = await Promise.all([
@@ -38,14 +63,21 @@ export default function MenuPage() {
 
   const saveProduct = async () => {
     if (!form.name_ar || !form.price) return
-    const payload = { ...form, price: Number(form.price), restaurant_id: restaurantId }
+    let imageUrl = form.image_url
+    if (imageFile) {
+      const uploaded = await uploadImage()
+      if (uploaded) imageUrl = uploaded
+    }
+    const payload = { ...form, price: Number(form.price), restaurant_id: restaurantId, image_url: imageUrl }
     if (editId) {
       await supabase.from('products').update(payload).eq('id', editId)
       setEditId(null)
     } else {
       await supabase.from('products').insert(payload)
     }
-    setForm({ name_ar: '', price: '', category_id: '', is_available: true })
+    setForm({ name_ar: '', price: '', category_id: '', is_available: true, image_url: '' })
+    setImageFile(null)
+    setImagePreview(null)
     fetchData()
   }
 
@@ -108,12 +140,31 @@ export default function MenuPage() {
                 <option value="">-- اختر الفئة --</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name_ar}</option>)}
               </select>
+
+              {/* Image upload */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">صورة المنتج</label>
+                <div className="flex items-center gap-3">
+                  {(imagePreview || form.image_url) && (
+                    <img
+                      src={imagePreview || form.image_url}
+                      alt="preview"
+                      className="w-16 h-16 rounded-lg object-cover border border-border flex-shrink-0"
+                    />
+                  )}
+                  <label className="flex-1 cursor-pointer bg-white/5 hover:bg-white/10 border border-dashed border-border rounded-lg px-4 py-3 text-center text-sm text-gray-400 transition-colors">
+                    {imageFile ? '✅ تم اختيار صورة' : '📷 اختر صورة'}
+                    <input type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
               <div className="flex gap-3">
-                <button onClick={saveProduct} className="flex-1 bg-brand hover:bg-brand-light text-white font-bold py-2.5 rounded-lg transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_16px_rgba(255,107,53,0.35)]">
-                  {editId ? 'حفظ التعديلات' : 'إضافة المنتج'}
+                <button onClick={saveProduct} disabled={uploading} className="flex-1 bg-brand hover:bg-brand-light text-white font-bold py-2.5 rounded-lg transition-all duration-200 active:scale-[0.98] hover:shadow-[0_0_16px_rgba(255,107,53,0.35)] disabled:opacity-50">
+                  {uploading ? 'جاري رفع الصورة...' : editId ? 'حفظ التعديلات' : 'إضافة المنتج'}
                 </button>
                 {editId && (
-                  <button onClick={() => { setEditId(null); setForm({ name_ar: '', price: '', category_id: '', is_available: true }) }} className="px-4 bg-white/10 text-gray-400 rounded-lg transition-colors hover:bg-white/15">
+                  <button onClick={() => { setEditId(null); setForm({ name_ar: '', price: '', category_id: '', is_available: true, image_url: '' }); setImageFile(null); setImagePreview(null) }} className="px-4 bg-white/10 text-gray-400 rounded-lg transition-colors hover:bg-white/15">
                     إلغاء
                   </button>
                 )}
@@ -127,6 +178,11 @@ export default function MenuPage() {
             <div className="space-y-2">
               {products.map((p, i) => (
                 <div key={p.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg transition-colors hover:bg-white/[0.07] stagger-item" style={{ animationDelay: `${i * 30}ms` }}>
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name_ar} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-sm">🍽️</div>
+                  )}
                   <button
                     onClick={() => toggleAvailable(p.id, p.is_available)}
                     className={`w-10 h-6 rounded-full transition-all duration-200 flex-shrink-0 ${p.is_available ? 'bg-green-500' : 'bg-gray-600'}`}
@@ -138,7 +194,7 @@ export default function MenuPage() {
                     <div className="text-gray-500 text-xs">{p.categories?.name_ar}</div>
                   </div>
                   <div className="text-brand font-bold text-sm">{Number(p.price).toFixed(0)} ج</div>
-                  <button onClick={() => { setEditId(p.id); setForm({ name_ar: p.name_ar, price: p.price, category_id: p.category_id || '', is_available: p.is_available }) }} className="text-gray-400 hover:text-white text-sm px-2 transition-colors">✏️</button>
+                  <button onClick={() => { setEditId(p.id); setForm({ name_ar: p.name_ar, price: p.price, category_id: p.category_id || '', is_available: p.is_available, image_url: p.image_url || '' }); setImagePreview(null); setImageFile(null) }} className="text-gray-400 hover:text-white text-sm px-2 transition-colors">✏️</button>
                   <button onClick={() => deleteProduct(p.id)} className="text-red-400 hover:text-red-300 text-sm px-1 transition-colors">🗑️</button>
                 </div>
               ))}
