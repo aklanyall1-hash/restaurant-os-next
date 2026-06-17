@@ -11,6 +11,8 @@ export default function CashierPage() {
   const printReceipt = () => {
     if (!selected) return
     const restaurantName = profile?.restaurants?.name || 'المطعم'
+    const logoUrl = profile?.restaurants?.logo_url
+    const logoHtml = logoUrl ? `<img src="${logoUrl}" style="width:56px;height:56px;border-radius:12px;object-fit:cover;display:block;margin:0 auto 8px;" />` : ''
     const itemsHtml = items.map(item => `
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #ccc;font-size:13px;">
         <span>${item.product_name_ar} x${item.quantity}</span>
@@ -33,6 +35,7 @@ export default function CashierPage() {
           </style>
         </head>
         <body>
+          ${logoHtml}
           <h2>${restaurantName}</h2>
           <div class="meta">طاولة: ${selected.tables?.label || '-'} · #${selected.order_number}</div>
           <div class="meta">${new Date(selected.created_at).toLocaleString('ar-EG')}</div>
@@ -69,6 +72,9 @@ export default function CashierPage() {
   const completeOrder = async () => {
     if (!selected) return
     await supabase.from('orders').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', selected.id)
+    // اقفل كل بنود الطلب كمان، عشان لو فيه بند لسه pending (مثلاً المطبخ
+    // متأخر أو الكاشير قفل الطلب يدوياً) ما يرجّعش يفتح الطلب تاني بالغلط
+    await supabase.from('order_items').update({ status: 'ready' }).eq('order_id', selected.id)
     setSelected(null)
     setItems([])
     fetchOrders()

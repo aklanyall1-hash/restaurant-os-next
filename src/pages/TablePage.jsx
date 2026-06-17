@@ -126,9 +126,16 @@ export default function TablePage() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-dark/95 backdrop-blur border-b border-border animate-fade-in-up">
         <div className="p-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-white font-bold text-xl font-display">{restaurant.name}</h1>
-            <p className="text-gray-400 text-sm">طاولة {tableNumber}</p>
+          <div className="flex items-center gap-3">
+            {restaurant.logo_url ? (
+              <img src={restaurant.logo_url} alt={restaurant.name} className="w-10 h-10 rounded-xl object-cover border border-border flex-shrink-0" />
+            ) : (
+              <span className="w-10 h-10 rounded-xl bg-brand/15 flex items-center justify-center text-lg border border-brand/30 flex-shrink-0">🌟</span>
+            )}
+            <div>
+              <h1 className="text-white font-bold text-xl font-display">{restaurant.name}</h1>
+              <p className="text-gray-400 text-sm">طاولة {tableNumber}</p>
+            </div>
           </div>
           {step === 'menu' && cartCount > 0 && (
             <button onClick={() => setStep('cart')} className="relative bg-brand hover:bg-brand-light text-white px-5 py-2 rounded-xl font-bold transition-all duration-200 active:scale-95 hover:shadow-[0_0_16px_rgba(255,107,53,0.4)] animate-scale-in">

@@ -211,11 +211,21 @@ export default function MenuPage() {
                 <label className="block text-gray-400 text-sm mb-2">صورة المنتج</label>
                 <div className="flex items-center gap-3">
                   {(imagePreview || form.image_url) && (
-                    <img
-                      src={imagePreview || form.image_url}
-                      alt="preview"
-                      className="w-16 h-16 rounded-lg object-cover border border-border flex-shrink-0"
-                    />
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={imagePreview || form.image_url}
+                        alt="preview"
+                        className="w-16 h-16 rounded-lg object-cover border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setImageFile(null); setImagePreview(null); setForm({...form, image_url: ''}) }}
+                        className="absolute -top-2 -left-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center transition-colors"
+                        title="حذف الصورة"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   )}
                   <label className="flex-1 cursor-pointer bg-white/5 hover:bg-white/10 border border-dashed border-border rounded-lg px-4 py-3 text-center text-sm text-gray-400 transition-colors">
                     {imageFile ? '✅ تم اختيار صورة' : '📷 اختر صورة'}

@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [logoPreview, setLogoPreview] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,17 +35,26 @@ export default function SettingsPage() {
 
   const save = async () => {
     setSaving(true)
+    setError('')
     let logoUrl = form.logo_url
     if (logoFile) {
       const ext = logoFile.name.split('.').pop()
       const fileName = `${restaurantId}/logo-${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('product-images').upload(fileName, logoFile)
-      if (!error) {
-        const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
-        logoUrl = data.publicUrl
+      const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, logoFile)
+      if (uploadError) {
+        setSaving(false)
+        setError('فشل رفع الشعار: ' + uploadError.message)
+        return
       }
+      const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+      logoUrl = data.publicUrl
     }
-    await supabase.from('restaurants').update({ ...form, logo_url: logoUrl }).eq('id', restaurantId)
+    const { error: updateError } = await supabase.from('restaurants').update({ ...form, logo_url: logoUrl }).eq('id', restaurantId)
+    if (updateError) {
+      setSaving(false)
+      setError('فشل حفظ الإعدادات: ' + updateError.message)
+      return
+    }
     setForm(f => ({ ...f, logo_url: logoUrl }))
     setLogoFile(null)
     setLogoPreview(null)
@@ -121,6 +131,12 @@ export default function SettingsPage() {
             <span className={`block w-6 h-6 bg-white rounded-full absolute top-1 transition-transform duration-200 ${form.is_open ? 'right-1' : 'right-7'}`} />
           </button>
         </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg p-3">
+            {error}
+          </div>
+        )}
 
         <button
           onClick={save}

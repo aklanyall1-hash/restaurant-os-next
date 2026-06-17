@@ -2,22 +2,38 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 
-// صوت تنبيه بسيط بدون ملفات خارجية
+// AudioContext واحد ثابت لكل الصفحة، بدل ما نعمل واحد جديد كل نغمة
+let sharedAudioCtx = null
+function getAudioCtx() {
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  return sharedAudioCtx
+}
+
+// المتصفحات بتمنع تشغيل الصوت قبل أول تفاعل (click) من المستخدم.
+// الدالة دي تتنادي عند أول ضغطة (تفعيل الصوت) عشان "تفتح" الـ context.
+function unlockAudio() {
+  const ctx = getAudioCtx()
+  if (ctx.state === 'suspended') ctx.resume()
+}
+
 function playAlert() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = getAudioCtx()
+    if (ctx.state === 'suspended') { ctx.resume() }
     const beep = (freq, start, dur) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
       o.connect(g); g.connect(ctx.destination)
       o.frequency.value = freq
-      g.gain.setValueAtTime(0.3, ctx.currentTime + start)
+      g.gain.setValueAtTime(0.35, ctx.currentTime + start)
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur)
       o.start(ctx.currentTime + start)
       o.stop(ctx.currentTime + start + dur + 0.05)
     }
     beep(880, 0, 0.15); beep(1100, 0.2, 0.15); beep(880, 0.4, 0.3)
-  } catch(e) {}
+  } catch(e) { console.error('Audio alert failed:', e) }
 }
 
 function OrderTimer({ createdAt }) {
@@ -92,10 +108,15 @@ export default function KitchenPage() {
     checkAndAdvanceOrder(itemId)
   }
 
-  // When all items of an order reach 'ready', auto-advance the order itself
+  // When all items of an order reach 'ready', auto-advance the order itself.
+  // Never touch an order that's already completed/cancelled - that's a final
+  // state set by the cashier, and a late kitchen update shouldn't reopen it.
   const checkAndAdvanceOrder = async (itemId) => {
     const { data: item } = await supabase.from('order_items').select('order_id').eq('id', itemId).single()
     if (!item) return
+    const { data: orderRow } = await supabase.from('orders').select('status').eq('id', item.order_id).single()
+    if (!orderRow || orderRow.status === 'completed' || orderRow.status === 'cancelled') return
+
     const { data: items } = await supabase.from('order_items').select('status').eq('order_id', item.order_id)
     if (items && items.every(i => i.status === 'ready')) {
       await supabase.from('orders').update({ status: 'ready' }).eq('id', item.order_id)
@@ -130,7 +151,7 @@ export default function KitchenPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { setSoundEnabled(p => !p); if (!soundEnabled) playAlert() }}
+            onClick={() => { unlockAudio(); setSoundEnabled(p => !p); if (!soundEnabled) playAlert() }}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-all ${
               soundEnabled
                 ? 'bg-green-500/10 border-green-500/20 text-green-400'

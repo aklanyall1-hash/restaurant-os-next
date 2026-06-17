@@ -26,9 +26,13 @@ export default function NavBar() {
   return (
     <nav className="fixed top-0 right-0 left-0 z-50 glass border-b border-border h-16 flex items-center px-4">
       <div className="flex items-center gap-2.5 mr-4">
-        <span className="w-9 h-9 rounded-xl bg-brand/15 flex items-center justify-center text-xl border border-brand/30">
-          🌟
-        </span>
+        {profile?.restaurants?.logo_url ? (
+          <img src={profile.restaurants.logo_url} alt="logo" className="w-9 h-9 rounded-xl object-cover border border-brand/30" />
+        ) : (
+          <span className="w-9 h-9 rounded-xl bg-brand/15 flex items-center justify-center text-xl border border-brand/30">
+            🌟
+          </span>
+        )}
         <div className="leading-tight">
           <div className="font-display font-bold text-lg text-white">
             {profile?.restaurants?.name || 'أبو حسني'}
