@@ -11,23 +11,20 @@ function getAudioCtx() {
   return sharedAudioCtx
 }
 
-// المتصفحات بتمنع تشغيل الصوت قبل أول تفاعل (click) من المستخدم.
-// الدالة دي تتنادي عند أول ضغطة (تفعيل الصوت) عشان "تفتح" الـ context.
-function unlockAudio() {
-  const ctx = getAudioCtx()
-  if (ctx.state === 'suspended') ctx.resume()
-}
-
-function playAlert() {
+async function playAlert() {
   try {
     const ctx = getAudioCtx()
-    if (ctx.state === 'suspended') { ctx.resume() }
+    if (ctx.state === 'suspended') {
+      await ctx.resume()
+    }
     const beep = (freq, start, dur) => {
       const o = ctx.createOscillator()
       const g = ctx.createGain()
       o.connect(g); g.connect(ctx.destination)
+      o.type = 'sine'
       o.frequency.value = freq
-      g.gain.setValueAtTime(0.35, ctx.currentTime + start)
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + start)
+      g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + start + 0.02)
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur)
       o.start(ctx.currentTime + start)
       o.stop(ctx.currentTime + start + dur + 0.05)
@@ -151,7 +148,13 @@ export default function KitchenPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { unlockAudio(); setSoundEnabled(p => !p); if (!soundEnabled) playAlert() }}
+            onClick={() => {
+              const next = !soundEnabled
+              setSoundEnabled(next)
+              // كل ضغطة (تشغيل أو تطفية) تشغل نغمة اختبار، عشان المستخدم
+              // يتأكد إن الصوت شغال فعلاً ويفتح الـ AudioContext من أول لمسة
+              playAlert()
+            }}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-all ${
               soundEnabled
                 ? 'bg-green-500/10 border-green-500/20 text-green-400'
@@ -214,7 +217,7 @@ export default function KitchenPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <OrderTimer createdAt={order.created_at} />
-                    <span className="text-gray-400 text-sm">{order.tables?.label}</span>
+                    <span className="text-gray-400 text-sm">{order.tables?.label}{order.customer_name && ` · ${order.customer_name}`}</span>
                   </div>
                 </div>
 

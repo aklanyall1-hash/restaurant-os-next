@@ -90,7 +90,14 @@ export default function AdminPage() {
       {/* Users / profiles */}
       <div className="glass rounded-xl p-5 animate-fade-in-up" style={{ animationDelay: '180ms' }}>
         <h2 className="text-white font-bold mb-3 font-display">👥 المستخدمون ({profiles.length})</h2>
-        <p className="text-gray-500 text-xs mb-3">لإضافة مستخدم جديد: أنشئ حسابه من Supabase Dashboard ← Authentication ← Add user، وسيظهر هنا لربطه بمطعم.</p>
+        <div className="bg-brand/10 border border-brand/20 rounded-lg p-3 mb-4 text-sm text-gray-300 leading-relaxed">
+          <strong className="text-brand">لإضافة موظف جديد:</strong>
+          <ol className="list-decimal mr-5 mt-1 space-y-0.5">
+            <li>افتح Supabase Dashboard ← Authentication ← Add user ← Create new user</li>
+            <li>اكتب إيميل وباسورد للموظف، وفعّل "Auto Confirm User"</li>
+            <li>رجع هنا واضبط له المطعم والدور والمحطة من القوائم تحت</li>
+          </ol>
+        </div>
         <div className="space-y-2">
           {profiles.map(p => {
             const restaurantStations = stations.filter(s => s.restaurant_id === p.restaurant_id && s.type === 'kitchen')
@@ -129,6 +136,15 @@ export default function AdminPage() {
                     <option value="">-- بدون محطة (يشوف الكل) --</option>
                     {restaurantStations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
+                )}
+                {p.restaurant_id && (
+                  <button
+                    onClick={() => { if (confirm('إزالة هذا المستخدم من المطعم؟ سيفقد الوصول فوراً.')) assignProfile(p.id, { restaurant_id: null, station_id: null, role: 'staff' }) }}
+                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                    title="إزالة من المطعم"
+                  >
+                    🚫 إزالة
+                  </button>
                 )}
               </div>
             )

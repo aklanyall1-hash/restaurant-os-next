@@ -12,6 +12,7 @@ export default function TablePage() {
   const [activeCategory, setActiveCategory] = useState(null)
   const [step, setStep] = useState('menu') // 'menu' | 'cart' | 'success'
   const [orderNotes, setOrderNotes] = useState('')
+  const [customerName, setCustomerName] = useState('')
   const [loading, setLoading] = useState(false)
   const [flashId, setFlashId] = useState(null)
 
@@ -69,6 +70,7 @@ export default function TablePage() {
         status: 'pending',
         total_amount: cartTotal,
         notes: orderNotes,
+        customer_name: customerName.trim() || null,
       }).select().single()
 
       if (order) {
@@ -233,6 +235,12 @@ export default function TablePage() {
               </div>
             ))}
           </div>
+          <input
+            placeholder="اسمك (اختياري)"
+            value={customerName}
+            onChange={e => setCustomerName(e.target.value)}
+            className="w-full bg-white/10 text-white placeholder-gray-500 border border-border rounded-xl p-3 mb-3 text-sm transition-colors focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/30"
+          />
           <textarea
             placeholder="ملاحظات على الطلب (اختياري)"
             value={orderNotes}

@@ -38,6 +38,7 @@ export default function CashierPage() {
           ${logoHtml}
           <h2>${restaurantName}</h2>
           <div class="meta">طاولة: ${selected.tables?.label || '-'} · #${selected.order_number}</div>
+          ${selected.customer_name ? `<div class="meta">العميل: ${selected.customer_name}</div>` : ''}
           <div class="meta">${new Date(selected.created_at).toLocaleString('ar-EG')}</div>
           ${itemsHtml}
           <div class="total"><span>الإجمالي</span><span>${Number(selected.total_amount).toFixed(2)} ج.م</span></div>
@@ -115,7 +116,7 @@ export default function CashierPage() {
                 <span className="text-white font-bold font-display">#{o.order_number}</span>
                 <span className="text-green-400 text-xs">{statusLabel[o.status]}</span>
               </div>
-              <div className="text-gray-400 text-sm mt-1">{o.tables?.label}</div>
+              <div className="text-gray-400 text-sm mt-1">{o.tables?.label}{o.customer_name && ` · ${o.customer_name}`}</div>
               <div className="text-brand font-bold mt-1">{Number(o.total_amount).toFixed(2)} ج.م</div>
             </button>
           ))}
@@ -150,7 +151,7 @@ export default function CashierPage() {
           <div className="max-w-sm mx-auto animate-scale-in">
             <div className="text-center mb-6">
               <div className="text-2xl font-bold text-white mb-1 font-display">فاتورة</div>
-              <div className="text-gray-400">#{selected.order_number} · {selected.tables?.label}</div>
+              <div className="text-gray-400">#{selected.order_number} · {selected.tables?.label}{selected.customer_name && ` · ${selected.customer_name}`}</div>
             </div>
 
             <div className="space-y-3 mb-6">

@@ -109,7 +109,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="text-white font-medium">#{o.order_number}</span>
-                  <span className="text-gray-400 text-sm">{o.tables?.label || 'طاولة غير محددة'}</span>
+                  <span className="text-gray-400 text-sm">{o.tables?.label || 'طاولة غير محددة'}{o.customer_name && ` · ${o.customer_name}`}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-white font-medium">{Number(o.total_amount).toFixed(0)} ج</span>
