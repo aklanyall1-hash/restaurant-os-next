@@ -5,17 +5,20 @@ import { useAuth } from '../lib/AuthContext'
 export default function AdminPage() {
   const [restaurants, setRestaurants] = useState([])
   const [profiles, setProfiles] = useState([])
+  const [stations, setStations] = useState([])
   const [newRestName, setNewRestName] = useState('')
   const [creating, setCreating] = useState(false)
   const [msg, setMsg] = useState('')
 
   const fetchAll = async () => {
-    const [r, p] = await Promise.all([
+    const [r, p, s] = await Promise.all([
       supabase.from('restaurants').select('*').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*, restaurants(name)').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*, restaurants(name), stations(name)').order('created_at', { ascending: false }),
+      supabase.from('stations').select('*').order('sort_order'),
     ])
     if (r.data) setRestaurants(r.data)
     if (p.data) setProfiles(p.data)
+    if (s.data) setStations(s.data)
   }
 
   useEffect(() => { fetchAll() }, [])
@@ -35,8 +38,8 @@ export default function AdminPage() {
     setTimeout(() => setMsg(''), 3000)
   }
 
-  const assignProfile = async (profileId, restaurantId, role) => {
-    await supabase.from('profiles').update({ restaurant_id: restaurantId || null, role }).eq('id', profileId)
+  const assignProfile = async (profileId, updates) => {
+    await supabase.from('profiles').update(updates).eq('id', profileId)
     fetchAll()
   }
 
@@ -89,31 +92,47 @@ export default function AdminPage() {
         <h2 className="text-white font-bold mb-3 font-display">👥 المستخدمون ({profiles.length})</h2>
         <p className="text-gray-500 text-xs mb-3">لإضافة مستخدم جديد: أنشئ حسابه من Supabase Dashboard ← Authentication ← Add user، وسيظهر هنا لربطه بمطعم.</p>
         <div className="space-y-2">
-          {profiles.map(p => (
-            <div key={p.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg flex-wrap">
-              <div className="flex-1 min-w-[140px]">
-                <div className="text-white text-sm">{p.full_name || p.id.slice(0, 8)}</div>
-                <div className="text-gray-500 text-xs">{p.restaurants?.name || 'بدون مطعم'}</div>
+          {profiles.map(p => {
+            const restaurantStations = stations.filter(s => s.restaurant_id === p.restaurant_id && s.type === 'kitchen')
+            return (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg flex-wrap">
+                <div className="flex-1 min-w-[140px]">
+                  <div className="text-white text-sm">{p.full_name || p.id.slice(0, 8)}</div>
+                  <div className="text-gray-500 text-xs">
+                    {p.restaurants?.name || 'بدون مطعم'}
+                    {p.stations?.name && ` · ${p.stations.name}`}
+                  </div>
+                </div>
+                <select
+                  value={p.restaurant_id || ''}
+                  onChange={e => assignProfile(p.id, { restaurant_id: e.target.value || null, station_id: null })}
+                  className="bg-surface text-white border border-border rounded-lg px-3 py-1.5 text-sm"
+                >
+                  <option value="">-- بدون مطعم --</option>
+                  {restaurants.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+                <select
+                  value={p.role}
+                  onChange={e => assignProfile(p.id, { role: e.target.value })}
+                  className="bg-surface text-white border border-border rounded-lg px-3 py-1.5 text-sm"
+                >
+                  <option value="staff">موظف</option>
+                  <option value="owner">صاحب مطعم</option>
+                  <option value="super_admin">مشرف عام</option>
+                </select>
+                {p.role === 'staff' && p.restaurant_id && (
+                  <select
+                    value={p.station_id || ''}
+                    onChange={e => assignProfile(p.id, { station_id: e.target.value || null })}
+                    className="bg-surface text-white border border-border rounded-lg px-3 py-1.5 text-sm"
+                  >
+                    <option value="">-- بدون محطة (يشوف الكل) --</option>
+                    {restaurantStations.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                )}
               </div>
-              <select
-                value={p.restaurant_id || ''}
-                onChange={e => assignProfile(p.id, e.target.value, p.role)}
-                className="bg-surface text-white border border-border rounded-lg px-3 py-1.5 text-sm"
-              >
-                <option value="">-- بدون مطعم --</option>
-                {restaurants.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-              <select
-                value={p.role}
-                onChange={e => assignProfile(p.id, p.restaurant_id, e.target.value)}
-                className="bg-surface text-white border border-border rounded-lg px-3 py-1.5 text-sm"
-              >
-                <option value="staff">موظف</option>
-                <option value="owner">صاحب مطعم</option>
-                <option value="super_admin">مشرف عام</option>
-              </select>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

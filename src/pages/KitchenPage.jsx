@@ -38,17 +38,24 @@ function OrderTimer({ createdAt }) {
 }
 
 export default function KitchenPage() {
-  const { restaurantId } = useAuth()
+  const { restaurantId, stationId, canSeeAllStations } = useAuth()
   const [orders, setOrders] = useState([])
+  const [stations, setStations] = useState([])
+  const [activeStation, setActiveStation] = useState('all')
   const [newOrderIds, setNewOrderIds] = useState(new Set())
   const [soundEnabled, setSoundEnabled] = useState(true)
   const soundRef = useRef(soundEnabled)
   soundRef.current = soundEnabled
 
+  const fetchStations = async () => {
+    const { data } = await supabase.from('stations').select('*').eq('restaurant_id', restaurantId).eq('type', 'kitchen').order('sort_order')
+    if (data) setStations(data)
+  }
+
   const fetchOrders = async () => {
     const { data } = await supabase
       .from('orders')
-      .select('*, tables(label), order_items(*, products(name_ar, image_url))')
+      .select('*, tables(label), order_items(*, products(name_ar, image_url), stations(name))')
       .eq('restaurant_id', restaurantId)
       .in('status', ['pending', 'preparing'])
       .order('created_at', { ascending: true })
@@ -57,6 +64,9 @@ export default function KitchenPage() {
 
   useEffect(() => {
     if (!restaurantId) return
+    // staff with a single station start filtered to it; owners/admins see all
+    if (!canSeeAllStations && stationId) setActiveStation(stationId)
+    fetchStations()
     fetchOrders()
 
     const channel = supabase.channel('kitchen')
@@ -69,26 +79,54 @@ export default function KitchenPage() {
         fetchOrders()
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, fetchOrders)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
   }, [restaurantId])
 
-  const updateStatus = async (orderId, status) => {
-    await supabase.from('orders').update({ status }).eq('id', orderId)
+  // Update a single item's status (per-station prep tracking)
+  const updateItemStatus = async (itemId, status) => {
+    await supabase.from('order_items').update({ status }).eq('id', itemId)
+    fetchOrders()
+    checkAndAdvanceOrder(itemId)
   }
 
-  const statusConfig = {
-    pending:   { label: 'جديد', next: 'preparing', nextLabel: '🔥 ابدأ التحضير', color: 'border-yellow-500' },
-    preparing: { label: 'يُحضَّر', next: 'ready',    nextLabel: '✅ جاهز', color: 'border-blue-500' },
+  // When all items of an order reach 'ready', auto-advance the order itself
+  const checkAndAdvanceOrder = async (itemId) => {
+    const { data: item } = await supabase.from('order_items').select('order_id').eq('id', itemId).single()
+    if (!item) return
+    const { data: items } = await supabase.from('order_items').select('status').eq('order_id', item.order_id)
+    if (items && items.every(i => i.status === 'ready')) {
+      await supabase.from('orders').update({ status: 'ready' }).eq('id', item.order_id)
+    } else if (items && items.some(i => i.status === 'preparing' || i.status === 'ready')) {
+      await supabase.from('orders').update({ status: 'preparing' }).eq('id', item.order_id)
+    }
   }
+
+  const itemStatusConfig = {
+    pending:   { label: 'جديد', next: 'preparing', nextLabel: '🔥 بدء', color: 'border-r-yellow-500' },
+    preparing: { label: 'يُحضَّر', next: 'ready', nextLabel: '✅ جاهز', color: 'border-r-blue-500' },
+    ready:     { label: 'جاهز', next: null, nextLabel: null, color: 'border-r-green-500' },
+  }
+
+  // Filter: which items does THIS view care about?
+  const filterItems = (items) => {
+    if (activeStation === 'all') return items
+    return items.filter(it => it.station_id === activeStation || !it.station_id)
+  }
+
+  // Only show orders that still have at least one relevant pending/preparing item
+  const visibleOrders = orders
+    .map(o => ({ ...o, order_items: filterItems(o.order_items || []) }))
+    .filter(o => o.order_items.some(it => it.status !== 'ready'))
 
   return (
     <div className="p-4 min-h-screen pattern-bg">
-      <div className="flex items-center justify-between mb-6 animate-fade-in-up">
+      <div className="flex items-center justify-between mb-4 animate-fade-in-up flex-wrap gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold text-white">شاشة المطبخ 👨‍🍳</h1>
-          <p className="text-gray-500 text-sm mt-1">{orders.length} طلب قيد التنفيذ</p>
+          <p className="text-gray-500 text-sm mt-1">{visibleOrders.length} طلب قيد التنفيذ</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -108,20 +146,44 @@ export default function KitchenPage() {
         </div>
       </div>
 
-      {orders.length === 0 ? (
+      {/* Station filter tabs - only meaningful with 2+ stations */}
+      {stations.length > 1 && (
+        <div className="flex gap-2 mb-6 overflow-x-auto animate-fade-in-up" style={{ animationDelay: '40ms' }}>
+          <button
+            onClick={() => setActiveStation('all')}
+            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              activeStation === 'all' ? 'bg-brand text-white' : 'bg-white/10 text-gray-400 hover:bg-white/15'
+            }`}
+          >
+            الكل
+          </button>
+          {stations.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setActiveStation(s.id)}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                activeStation === s.id ? 'bg-brand text-white' : 'bg-white/10 text-gray-400 hover:bg-white/15'
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {visibleOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-gray-500 animate-fade-in-up">
           <span className="text-6xl mb-4">✨</span>
           <p className="text-xl">لا توجد طلبات حالياً</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {orders.map((order, i) => {
-            const cfg = statusConfig[order.status]
+          {visibleOrders.map((order, i) => {
             const isNew = newOrderIds.has(order.id)
             return (
               <div
                 key={order.id}
-                className={`glass rounded-xl border-2 ${cfg.color} ${isNew ? 'pulse-new' : ''} flex flex-col stagger-item`}
+                className={`glass rounded-xl border-2 border-white/10 ${isNew ? 'pulse-new' : ''} flex flex-col stagger-item`}
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <div className="p-3 border-b border-white/10 flex justify-between items-center">
@@ -136,36 +198,35 @@ export default function KitchenPage() {
                 </div>
 
                 <div className="p-3 flex-1 space-y-2">
-                  {order.order_items?.map(item => (
-                    <div key={item.id} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
-                      <span className="bg-brand text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
-                        {item.quantity}
-                      </span>
-                      <span className="text-white text-sm">{item.product_name_ar}</span>
-                      {item.notes && <span className="text-yellow-400 text-xs mr-auto">⚠️ {item.notes}</span>}
-                    </div>
-                  ))}
+                  {order.order_items?.map(item => {
+                    const cfg = itemStatusConfig[item.status || 'pending']
+                    return (
+                      <div key={item.id} className={`flex items-center gap-2 bg-white/5 rounded-lg p-2 border-r-2 ${cfg.color}`}>
+                        <span className="bg-brand text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0">
+                          {item.quantity}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white text-sm truncate">{item.product_name_ar}</div>
+                          {item.notes && <div className="text-yellow-400 text-xs">⚠️ {item.notes}</div>}
+                        </div>
+                        {cfg.next && (
+                          <button
+                            onClick={() => updateItemStatus(item.id, cfg.next)}
+                            className="bg-brand hover:bg-brand-light text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 flex-shrink-0"
+                          >
+                            {cfg.nextLabel}
+                          </button>
+                        )}
+                        {!cfg.next && (
+                          <span className="text-green-400 text-xs flex-shrink-0">✅</span>
+                        )}
+                      </div>
+                    )
+                  })}
                   {order.notes && (
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 text-yellow-400 text-sm">
                       📝 {order.notes}
                     </div>
-                  )}
-                </div>
-
-                <div className="p-3 border-t border-white/10">
-                  <button
-                    onClick={() => updateStatus(order.id, cfg.next)}
-                    className="w-full bg-brand hover:bg-brand-light text-white font-bold py-2.5 rounded-lg transition-all duration-200 text-sm hover:shadow-[0_0_16px_rgba(255,107,53,0.4)] active:scale-[0.98]"
-                  >
-                    {cfg.nextLabel}
-                  </button>
-                  {order.status === 'preparing' && (
-                    <button
-                      onClick={() => updateStatus(order.id, 'cancelled')}
-                      className="w-full mt-1 text-red-400 hover:bg-red-400/10 py-1 rounded-lg transition-all duration-200 text-xs"
-                    >
-                      إلغاء
-                    </button>
                   )}
                 </div>
               </div>

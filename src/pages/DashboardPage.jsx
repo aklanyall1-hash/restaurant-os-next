@@ -9,12 +9,19 @@ export default function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState([])
 
   const fetchStats = async () => {
-    const today = new Date().toISOString().split('T')[0]
+    // Start of "today" in the LOCAL timezone, converted to an ISO instant.
+    // Using toISOString().split('T')[0] alone assumes UTC midnight, which
+    // is wrong for Egypt (UTC+2/+3) and caused yesterday's late-night
+    // orders to bleed into "today's" totals.
+    const now = new Date()
+    const localMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayStartISO = localMidnight.toISOString()
+
     const { data } = await supabase
       .from('orders')
       .select('status, total_amount, created_at')
       .eq('restaurant_id', restaurantId)
-      .gte('created_at', today)
+      .gte('created_at', todayStartISO)
 
     if (data) {
       setStats({

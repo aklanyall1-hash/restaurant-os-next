@@ -82,6 +82,7 @@ export default function TablePage() {
             unit_price: i.price,
             total_price: i.price * i.qty,
             notes: i.note || null,
+            station_id: i.station_id || null,
           }))
         )
         setStep('success')
