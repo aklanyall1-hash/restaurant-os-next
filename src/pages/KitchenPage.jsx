@@ -79,6 +79,7 @@ export default function KitchenPage() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [audioError, setAudioError] = useState('')
   const [audioActivated, setAudioActivated] = useState(false)
+  const [lastEventLog, setLastEventLog] = useState('')
   const soundRef = useRef(soundEnabled)
   soundRef.current = soundEnabled
   const keepAliveRef = useRef(null)
@@ -111,6 +112,7 @@ export default function KitchenPage() {
 
     const channel = supabase.channel('kitchen')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, (payload) => {
+        setLastEventLog(`طلب جديد وصل: ${new Date().toLocaleTimeString('ar-EG')} — الصوت ${soundRef.current ? 'مفعّل، جاري التشغيل' : 'مطفي'}`)
         if (soundRef.current) playAlert(setAudioError)
         setNewOrderIds(prev => new Set([...prev, payload.new.id]))
         setTimeout(() => {
@@ -120,7 +122,9 @@ export default function KitchenPage() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, fetchOrders)
-      .subscribe()
+      .subscribe((status) => {
+        setLastEventLog(prev => prev || `حالة الاتصال: ${status}`)
+      })
 
     return () => supabase.removeChannel(channel)
   }, [restaurantId])
@@ -174,6 +178,9 @@ export default function KitchenPage() {
           <p className="text-gray-500 text-sm mt-1">{visibleOrders.length} طلب قيد التنفيذ</p>
           {!audioActivated && (
             <p className="text-yellow-400 text-xs mt-1">👆 دوس على "اختبار الصوت" مرة واحدة عند بدء الشيفت لتفعيل التنبيهات</p>
+          )}
+          {lastEventLog && (
+            <p className="text-blue-400 text-xs mt-1">🔍 {lastEventLog}</p>
           )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
