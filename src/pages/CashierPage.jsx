@@ -85,7 +85,7 @@ export default function CashierPage() {
     if (!restaurantId) return
     fetchOrders()
     const ch = supabase.channel('cashier')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchOrders)
       .subscribe()
     return () => supabase.removeChannel(ch)
   }, [restaurantId])

@@ -110,8 +110,9 @@ export default function KitchenPage() {
     fetchStations()
     fetchOrders()
 
-    const channel = supabase.channel('kitchen')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, (payload) => {
+    const channel = supabase.channel('kitchen-' + restaurantId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.new.restaurant_id !== restaurantId) return
         setLastEventLog(`طلب جديد وصل: ${new Date().toLocaleTimeString('ar-EG')} — الصوت ${soundRef.current ? 'مفعّل، جاري التشغيل' : 'مطفي'}`)
         if (soundRef.current) playAlert(setAudioError)
         setNewOrderIds(prev => new Set([...prev, payload.new.id]))
@@ -120,7 +121,10 @@ export default function KitchenPage() {
         }, 8000)
         fetchOrders()
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, fetchOrders)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.new.restaurant_id !== restaurantId) return
+        fetchOrders()
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, fetchOrders)
       .subscribe((status) => {
         setLastEventLog(prev => prev || `حالة الاتصال: ${status}`)

@@ -50,7 +50,8 @@ export default function DashboardPage() {
     fetchRecent()
 
     const channel = supabase.channel('dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.new?.restaurant_id !== restaurantId && payload.old?.restaurant_id !== restaurantId) return
         fetchStats()
         fetchRecent()
       })

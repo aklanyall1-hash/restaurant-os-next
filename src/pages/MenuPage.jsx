@@ -60,7 +60,7 @@ export default function MenuPage() {
     fetchData()
 
     const channel = supabase.channel('menu-products')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `restaurant_id=eq.${restaurantId}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, fetchData)
       .subscribe()
 
     return () => supabase.removeChannel(channel)
